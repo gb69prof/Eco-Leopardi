@@ -1,0 +1,67 @@
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Leopardi – Spazio di esperienza</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="topbar">
+    <div id="title">Giacomo Leopardi – Spazio di esperienza</div>
+    <div id="menu">☰</div>
+</div>
+
+<div id="layout">
+
+    <div id="left-frame">
+        <div class="text-block">
+            Non stai entrando in una biografia.<br><br>
+            Stai entrando in una visione.
+        </div>
+    </div>
+
+    <div id="center-frame">
+
+        <div id="leopardi-container">
+            <img id="leopardi-img" src="leopardi.jpg" alt="Leopardi">
+        </div>
+
+        <div id="video-container" class="hidden">
+            <iframe id="yt-video"
+                src="https://www.youtube.com/embed/iN_rSsKyAQc?autoplay=1"
+                title="YouTube video player"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen>
+            </iframe>
+        </div>
+
+        <div id="scene-container" class="hidden">
+            <div id="scene-placeholder">
+                SCENA 360° (placeholder)<br><br>
+                Qui comparirà la collina WebGL
+            </div>
+        </div>
+
+    </div>
+
+    <div id="right-frame">
+        <div class="status">
+            Stato mentale<br><br>
+            Apertura
+        </div>
+    </div>
+
+</div>
+
+<div id="controls">
+    <div class="arrow" id="back">◀</div>
+    <div class="arrow" id="forward">▶</div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
