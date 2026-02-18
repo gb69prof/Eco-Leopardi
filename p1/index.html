@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+  <title>Leopardi – Spazio di esperienza</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header id="topbar">
+    <button id="leopardi-icon" class="icon" title="Ritorna all'inizio" aria-label="Ritorna all'inizio">
+      <img src="assets/leopardi.png" alt="Leopardi" />
+    </button>
+    <div id="top-title">Giacomo Leopardi – Spazio di esperienza</div>
+    <button id="menu-btn" class="icon" title="Indice" aria-label="Indice">☰</button>
+  </header>
+
+  <aside id="drawer" class="drawer hidden" aria-hidden="true">
+    <div class="drawer-title">Mappa</div>
+    <button class="drawer-item" data-scene="1">🌿 Collina – Soglia</button>
+    <button class="drawer-item" data-scene="2">⛰ Natura-matrigna</button>
+    <button class="drawer-item" data-scene="3">🌋 Vesuvio – Ginestre</button>
+  </aside>
+
+  <main id="layout">
+    <section id="left-frame">
+      <div id="lesson-text" class="panel-text">
+        Non stai entrando in una biografia.<br><br>
+        Stai entrando in una visione.
+      </div>
+    </section>
+
+    <section id="center-frame">
+      <div id="home-layer" class="layer">
+        <div class="home-wrap">
+          <img id="home-portrait" src="assets/leopardi.png" alt="Leopardi" />
+          <div class="home-hint">Tocca Leopardi per ascoltare l’eco</div>
+        </div>
+      </div>
+
+      <div id="video-layer" class="layer hidden">
+        <div id="player"></div>
+        <div class="skip-row">
+          <button id="skip-video" class="btn">Salta</button>
+        </div>
+      </div>
+
+      <div id="scene-layer" class="layer hidden">
+        <canvas id="gl"></canvas>
+        <div id="fog" class="fog hidden"></div>
+        <div id="center-hint" class="center-hint">Avanza</div>
+      </div>
+    </section>
+
+    <section id="right-frame">
+      <div class="panel-text">
+        <div class="status-title">Stato mentale</div>
+        <div id="status-line">Apertura</div>
+        <div class="meter">
+          <div class="meter-label">Immaginazione</div>
+          <div class="meter-bar"><div id="meter-fill" class="meter-fill" style="width: 55%"></div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- iPad touch arrows -->
+  <nav id="touch-controls" aria-label="Controlli">
+    <button id="btn-back" class="arrow" aria-label="Indietro">◀</button>
+    <button id="btn-forward" class="arrow" aria-label="Avanti">▶</button>
+  </nav>
+
+  <!-- YouTube IFrame API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <!-- Three.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
