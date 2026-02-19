@@ -1,30 +1,33 @@
-/* Leopardi Web App – Prototype v1
-   - Video YouTube: click portrait -> plays, on end -> enters 360 scene
-   - 360 scenes: pano1/pano2/pano3
-   - Natural forward/back: hold arrows (touch) or keyboard arrows
-   - Fog transition between scenes
+/* Leopardi Web App – v1.1
+   - Avvio WebGL quando vuoi (senza video)
+   - Frecce iPad robuste: touchstart/touchend + pointer + mouse
+   - Video YouTube opzionale: play -> on end -> entra in scena
 */
 
 const $ = (s)=>document.querySelector(s);
 
-const homeLayer = $("#home-layer");
+const homeLayer  = $("#home-layer");
 const videoLayer = $("#video-layer");
 const sceneLayer = $("#scene-layer");
-const fog = $("#fog");
+const fog        = $("#fog");
 
-const topTitle = $("#top-title");
+const topTitle   = $("#top-title");
 const lessonText = $("#lesson-text");
 const statusLine = $("#status-line");
-const meterFill = $("#meter-fill");
+const meterFill  = $("#meter-fill");
 
-const drawer = $("#drawer");
-const menuBtn = $("#menu-btn");
+const drawer     = $("#drawer");
+const menuBtn    = $("#menu-btn");
 const leopardiIcon = $("#leopardi-icon");
 
 const btnF = $("#btn-forward");
 const btnB = $("#btn-back");
+
 const skipBtn = $("#skip-video");
-const homePortrait = $("#home-portrait");
+
+// NUOVI bottoni home
+const btnPlayVideo = $("#btn-play-video");
+const btnStartPath = $("#btn-start-path");
 
 let ytPlayer = null;
 let ytReady = false;
@@ -57,10 +60,10 @@ const SCENES = [
   }
 ];
 
-let sceneIndex = 0;      // 0..SCENES-1
-let progress = 0.0;      // 0..1 inside current segment (for “natural” threshold feel)
-let moveDir = 0;         // -1 back, +1 forward, 0 none
-let lastT = performance.now();
+let sceneIndex = 0;  // 0..SCENES-1
+let progress   = 0.0;
+let moveDir    = 0;  // -1 indietro, +1 avanti
+let lastT      = performance.now();
 
 /* ----------------- Drawer / Home ----------------- */
 menuBtn.addEventListener("click", ()=>{
@@ -71,16 +74,21 @@ menuBtn.addEventListener("click", ()=>{
 drawer.addEventListener("click", (e)=>{
   const btn = e.target.closest(".drawer-item");
   if(!btn) return;
+
   const wanted = Number(btn.dataset.scene);
   const idx = SCENES.findIndex(s=>s.id===wanted);
-  if(idx>=0){
-    drawer.classList.add("hidden");
+
+  drawer.classList.add("hidden");
+
+  // Se non hai ancora avviato il WebGL, lo avvio ora e poi salto alla scena richiesta
+  if(!hasStartedScene){
+    enterScene(idx);
+  }else if(idx >= 0){
     goToScene(idx, true);
   }
 });
 
 leopardiIcon.addEventListener("click", ()=>{
-  // Back to home
   stopAllMotion();
   showHome();
 });
@@ -96,9 +104,7 @@ function showHome(){
 }
 
 /* ----------------- YouTube ----------------- */
-window.onYouTubeIframeAPIReady = () => {
-  ytReady = true;
-};
+window.onYouTubeIframeAPIReady = () => { ytReady = true; };
 
 function ensurePlayer(){
   if(ytPlayer || !ytReady) return;
@@ -110,25 +116,25 @@ function ensurePlayer(){
       rel: 0,
       modestbranding: 1
     },
-    events: {
-      onStateChange: onPlayerStateChange
-    }
+    events: { onStateChange: onPlayerStateChange }
   });
 }
 
 function onPlayerStateChange(evt){
-  // ENDED = 0
   if(evt.data === YT.PlayerState.ENDED){
-    enterScene();
+    // fine reale del video => entra nel WebGL
+    enterScene(0);
   }
 }
 
-homePortrait.addEventListener("click", ()=>{
+function showVideoAndPlay(){
   homeLayer.classList.add("hidden");
+  sceneLayer.classList.add("hidden");
   videoLayer.classList.remove("hidden");
+
   ensurePlayer();
-  // YouTube requires a user gesture. This click qualifies.
-  // If player not ready yet, poll briefly.
+
+  // su iOS serve gesto utente: questo click vale come gesto
   const tryPlay = () => {
     try{
       if(ytPlayer && ytPlayer.playVideo){
@@ -139,13 +145,16 @@ homePortrait.addEventListener("click", ()=>{
     setTimeout(tryPlay, 120);
   };
   tryPlay();
-});
+}
 
-skipBtn.addEventListener("click", ()=> enterScene());
+/* Bottoni Home */
+btnPlayVideo.addEventListener("click", ()=> showVideoAndPlay());
+btnStartPath.addEventListener("click", ()=> enterScene(0)); // entra subito
 
-/* ----------------- Three.js 360 + minimal parallax ----------------- */
+skipBtn.addEventListener("click", ()=> enterScene(0));
+
+/* ----------------- Three.js 360 ----------------- */
 let renderer, camera, scene, sphere, texLoader;
-let ambientGain = null;
 
 function initThree(){
   const canvas = $("#gl");
@@ -159,28 +168,13 @@ function initThree(){
 
   texLoader = new THREE.TextureLoader();
 
-  // Inside-out sphere
   const geom = new THREE.SphereGeometry(500, 64, 32);
   geom.scale(-1, 1, 1);
   const mat = new THREE.MeshBasicMaterial({ color: 0x222222 });
   sphere = new THREE.Mesh(geom, mat);
   scene.add(sphere);
 
-  // Minimal “foreground” plane for slight depth cue
-  const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(20, 20, 16, 16),
-    new THREE.MeshBasicMaterial({ color: 0x0f0f12, transparent:true, opacity:0.12 })
-  );
-  ground.rotation.x = -Math.PI/2;
-  ground.position.y = -4.5;
-  ground.position.z = -6;
-  scene.add(ground);
-
-  // Simple pointer look (mouse + touch drag)
   attachLookControls(canvas);
-
-  // Start ambient audio (procedural wind-like noise)
-  startAmbient();
 }
 
 function loadPano(url){
@@ -194,21 +188,25 @@ function loadPano(url){
   });
 }
 
-function enterScene(){
-  if(hasStartedScene) return;
-  hasStartedScene = true;
-
-  // stop video playback to avoid audio bleed
+/* Entrata WebGL: puoi chiamarla sia dopo video che direttamente */
+function enterScene(startIndex=0){
+  // stop video se stava andando
   try{ ytPlayer && ytPlayer.stopVideo && ytPlayer.stopVideo(); }catch(_){}
 
   videoLayer.classList.add("hidden");
+  homeLayer.classList.add("hidden");
   sceneLayer.classList.remove("hidden");
 
   if(!renderer) initThree();
 
-  // start at scene 1 (collina)
-  goToScene(0, true);
-  requestAnimationFrame(loop);
+  if(!hasStartedScene){
+    hasStartedScene = true;
+    requestAnimationFrame(loop);
+  }
+
+  // porta alla scena richiesta (default collina)
+  startIndex = Math.max(0, Math.min(SCENES.length-1, startIndex));
+  goToScene(startIndex, true);
 }
 
 async function goToScene(idx, withFog){
@@ -224,7 +222,6 @@ async function goToScene(idx, withFog){
 
   if(withFog){
     fog.classList.remove("hidden");
-    // allow CSS animation restart
     fog.style.animation = "none";
     void fog.offsetHeight;
     fog.style.animation = "";
@@ -232,28 +229,19 @@ async function goToScene(idx, withFog){
 
   await loadPano(s.pano);
 
-  // hide fog a moment later
   if(withFog){
     setTimeout(()=> fog.classList.add("hidden"), 1400);
   }
 }
 
-/* ----------------- Movement model ----------------- */
-/* We simulate “walking forward/back” as progress 0..1 inside the current scene.
-   When progress crosses 1 -> next scene. When crosses 0 backward -> previous scene.
-   This keeps the “passo passo” feel with a natural threshold.
-*/
-const SPEED = 0.18; // slow & contemplative
+/* ----------------- Movimento “naturale” ----------------- */
+const SPEED = 0.18; // lento, contemplativo
 function updateMovement(dt){
   if(moveDir === 0) return;
 
   progress += moveDir * SPEED * dt;
 
-  // subtle camera bob + minimal z cue
-  const bob = Math.sin(performance.now()*0.002) * 0.03 * Math.abs(moveDir);
-  camera.position.z = 0.10 + bob;
-
-  // When reaching thresholds, switch scenes with fog
+  // soglie
   if(progress >= 1.0 && sceneIndex < SCENES.length-1){
     progress = 0.0;
     goToScene(sceneIndex+1, true);
@@ -263,7 +251,7 @@ function updateMovement(dt){
     goToScene(sceneIndex-1, true);
   }
 
-  // Meter micro-reacts inside scene (breathing)
+  // respiro lieve sulla barra
   const base = SCENES[sceneIndex].meter;
   const breathe = Math.sin(performance.now()*0.0012) * 2.0;
   meterFill.style.width = (base + breathe) + "%";
@@ -271,20 +259,37 @@ function updateMovement(dt){
 
 function stopAllMotion(){ moveDir = 0; }
 
-/* Touch arrows: hold to move */
+/* iPad: HOLD affidabile (touch + pointer + mouse) */
 function bindHold(btn, dir){
-  const start = (e)=>{ e.preventDefault(); moveDir = dir; };
-  const end = (e)=>{ e.preventDefault(); if(moveDir===dir) moveDir = 0; };
+  const start = (e)=>{
+    // IMPORTANTISSIMO su iOS
+    if(e && e.cancelable) e.preventDefault();
+    moveDir = dir;
+  };
+  const end = (e)=>{
+    if(e && e.cancelable) e.preventDefault();
+    if(moveDir === dir) moveDir = 0;
+  };
 
-  btn.addEventListener("pointerdown", start);
-  btn.addEventListener("pointerup", end);
-  btn.addEventListener("pointercancel", end);
-  btn.addEventListener("pointerleave", end);
+  // pointer events (modern)
+  btn.addEventListener("pointerdown", start, {passive:false});
+  btn.addEventListener("pointerup", end, {passive:false});
+  btn.addEventListener("pointercancel", end, {passive:false});
+  btn.addEventListener("pointerleave", end, {passive:false});
+
+  // touch fallback (iOS Safari)
+  btn.addEventListener("touchstart", start, {passive:false});
+  btn.addEventListener("touchend", end, {passive:false});
+  btn.addEventListener("touchcancel", end, {passive:false});
+
+  // mouse fallback (desktop)
+  btn.addEventListener("mousedown", start);
+  window.addEventListener("mouseup", end);
 }
 bindHold(btnF, +1);
 bindHold(btnB, -1);
 
-/* Keyboard arrows */
+/* Tastiera */
 document.addEventListener("keydown", (e)=>{
   if(e.key === "ArrowRight") moveDir = +1;
   if(e.key === "ArrowLeft") moveDir = -1;
@@ -313,7 +318,7 @@ function attachLookControls(canvas){
     const dy = e.clientY - lastY;
     lastX = e.clientX; lastY = e.clientY;
 
-    yaw -= dx * 0.003;
+    yaw   -= dx * 0.003;
     pitch -= dy * 0.003;
     pitch = clamp(pitch, -Math.PI/2 + 0.05, Math.PI/2 - 0.05);
 
@@ -326,61 +331,14 @@ function attachLookControls(canvas){
   window.addEventListener("pointermove", move);
 }
 
-/* ----------------- Ambient audio (procedural) ----------------- */
-function startAmbient(){
-  try{
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    const ctx = new AudioCtx();
-
-    // white noise
-    const bufferSize = 2 * ctx.sampleRate;
-    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const output = noiseBuffer.getChannelData(0);
-    for(let i=0;i<bufferSize;i++){ output[i] = (Math.random()*2-1)*0.35; }
-
-    const noise = ctx.createBufferSource();
-    noise.buffer = noiseBuffer;
-    noise.loop = true;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = 720;
-
-    const gain = ctx.createGain();
-    gain.gain.value = 0.0; // fade in later
-
-    noise.connect(filter);
-    filter.connect(gain);
-    gain.connect(ctx.destination);
-
-    noise.start(0);
-    ambientGain = gain;
-
-    // fade in slowly
-    const now = ctx.currentTime;
-    gain.gain.setValueAtTime(0.0, now);
-    gain.gain.linearRampToValueAtTime(0.06, now + 2.2);
-
-    // resume on first gesture if needed
-    const resume = ()=>{
-      if(ctx.state === "suspended") ctx.resume();
-      window.removeEventListener("pointerdown", resume);
-      window.removeEventListener("keydown", resume);
-    };
-    window.addEventListener("pointerdown", resume);
-    window.addEventListener("keydown", resume);
-
-  }catch(_){}
-}
-
 /* ----------------- Render loop ----------------- */
 function loop(t){
   const dt = Math.min(0.05, (t - lastT) / 1000);
   lastT = t;
 
   updateMovement(dt);
-  renderer.render(scene, camera);
 
+  renderer.render(scene, camera);
   requestAnimationFrame(loop);
 }
 
@@ -393,9 +351,7 @@ function resize(){
   camera.aspect = w/h;
   camera.updateProjectionMatrix();
 }
-window.addEventListener("resize", ()=>{
-  if(renderer) resize();
-});
+window.addEventListener("resize", ()=>{ if(renderer) resize(); });
 
 // Start in home
 showHome();
