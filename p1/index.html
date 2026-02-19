@@ -34,7 +34,13 @@
       <div id="home-layer" class="layer">
         <div class="home-wrap">
           <img id="home-portrait" src="assets/leopardi.png" alt="Leopardi" />
-          <div class="home-hint">Tocca Leopardi per ascoltare l’eco</div>
+          <div class="home-hint">Scegli: ascolta l’eco oppure entra nel percorso</div>
+
+          <!-- NUOVO: doppia scelta -->
+          <div class="home-actions">
+            <button id="btn-play-video" class="btn">Ascolta l’eco</button>
+            <button id="btn-start-path" class="btn btn-accent">Entra nel percorso</button>
+          </div>
         </div>
       </div>
 
@@ -66,8 +72,8 @@
 
   <!-- iPad touch arrows -->
   <nav id="touch-controls" aria-label="Controlli">
-    <button id="btn-back" class="arrow" aria-label="Indietro">◀</button>
-    <button id="btn-forward" class="arrow" aria-label="Avanti">▶</button>
+    <button id="btn-back" class="arrow" aria-label="Indietro" type="button">◀</button>
+    <button id="btn-forward" class="arrow" aria-label="Avanti" type="button">▶</button>
   </nav>
 
   <!-- YouTube IFrame API -->
